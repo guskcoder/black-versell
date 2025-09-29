@@ -3,88 +3,31 @@
 import { useState, useEffect } from "react";
 import Image from "next/image";
 import { XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Area, AreaChart } from 'recharts'
+import { dashboardData, summaryData } from '@/data/dashboard-data';
 
 interface DataItem {
-  data_transacao: string;
-  total_transacoes: string;
-  valor_total: string;
-  lucro_total: string;
+  date: string;
+  totalTransactions: number;
+  totalAmount: number;
+  profit: number;
+  dayOfWeek: string;
 }
 
 export default function Dashboard() {
   const [data, setData] = useState<DataItem[]>([]);
-  const [balance, setBalance] = useState<string>("0.00");
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [mounted, setMounted] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   useEffect(() => {
     setMounted(true);
-    fetchData();
-    fetchBalance();
+    loadData();
   }, []);
 
-  const fetchData = async () => {
-    try {
-      // Tenta primeiro a API real
-      let response = await fetch("/api/dashboard", {
-        cache: 'no-store'
-      });
-      let result = await response.json();
-
-      // Se falhar, usa os dados mockados
-      if (result.error) {
-        console.log("API real falhou, usando dados mockados");
-        response = await fetch("/api/dashboard/mock");
-        result = await response.json();
-      }
-
-      setData(result.data);
-      setLoading(false);
-    } catch (err) {
-      console.error("Erro ao carregar dados:", err);
-      // Tenta carregar dados mockados como fallback
-      try {
-        const response = await fetch("/api/dashboard/mock");
-        const result = await response.json();
-        setData(result.data);
-        setLoading(false);
-      } catch {
-        setError("Erro ao carregar dados");
-        setLoading(false);
-      }
-    }
-  };
-
-  const fetchBalance = async () => {
-    try {
-      // Tenta primeiro a API real
-      let response = await fetch("/api/balance", {
-        cache: 'no-store'
-      });
-      let result = await response.json();
-
-      // Se falhar, usa os dados mockados
-      if (result.error) {
-        console.log("Balance API real falhou, usando dados mockados");
-        response = await fetch("/api/balance/mock");
-        result = await response.json();
-      }
-
-      setBalance(result.query?.currentBalance || "0.00");
-    } catch (err) {
-      console.error("Erro ao carregar saldo:", err);
-      // Tenta carregar dados mockados como fallback
-      try {
-        const response = await fetch("/api/balance/mock");
-        const result = await response.json();
-        setBalance(result.query?.currentBalance || "0.00");
-      } catch {
-        console.error("Erro ao carregar saldo mockado");
-        setBalance("0.00");
-      }
-    }
+  const loadData = () => {
+    // Simula um pequeno delay como se estivesse carregando
+    setTimeout(() => {
+      setData(dashboardData);
+    }, 500);
   };
 
   const calculateTotals = () => {
@@ -93,14 +36,9 @@ export default function Dashboard() {
     return data.reduce(
       (acc, item) => {
         return {
-          transacoes:
-            acc.transacoes + parseInt(item.total_transacoes.replace(/\./g, "")),
-          valor:
-            acc.valor +
-            parseFloat(item.valor_total.replace(/\./g, "").replace(",", ".")),
-          lucro:
-            acc.lucro +
-            parseFloat(item.lucro_total.replace(/\./g, "").replace(",", ".")),
+          transacoes: acc.transacoes + item.totalTransactions,
+          valor: acc.valor + item.totalAmount,
+          lucro: acc.lucro + item.profit
         };
       },
       { transacoes: 0, valor: 0, lucro: 0 }
@@ -108,20 +46,6 @@ export default function Dashboard() {
   };
 
   const totals = calculateTotals();
-
-  const getTodayProfit = () => {
-    if (!data || !data.length) return 0;
-    // Pega o último item (mais recente) da lista
-    const lastItem = data[0];
-    return parseFloat(lastItem.lucro_total.replace(/\./g, "").replace(",", "."));
-  };
-
-  const todayProfit = getTodayProfit();
-
-  const getTotalBalance = () => {
-    const currentBalance = parseFloat(balance.replace(',', '.'));
-    return currentBalance + todayProfit;
-  };
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat("pt-BR", {
@@ -195,46 +119,18 @@ export default function Dashboard() {
   };
 
   const chartData = data && data.length > 0 ? data.slice().reverse().map(item => ({
-    data: item.data_transacao.substring(0, 5),
-    transacoes: parseInt(item.total_transacoes.replace(/\./g, "")),
-    valor: parseFloat(item.valor_total.replace(/\./g, "").replace(",", ".")),
-    lucro: parseFloat(item.lucro_total.replace(/\./g, "").replace(",", "."))
+    data: item.dayOfWeek,
+    transacoes: item.totalTransactions,
+    valor: item.totalAmount,
+    lucro: item.profit
   })) : []
 
-  if (!mounted) {
+  if (!mounted || data.length === 0) {
     return (
       <div className="min-h-screen bg-[#101828] flex items-center justify-center">
-        <div className="animate-scale-pulse">
-          <Image
-            src="https://dash.versellpay.com/loading.svg"
-            alt="Loading"
-            width={100}
-            height={100}
-          />
+        <div className="animate-pulse">
+          <div className="w-24 h-24 bg-blue-500 rounded-full"></div>
         </div>
-      </div>
-    );
-  }
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-[#101828] flex items-center justify-center">
-        <div className="animate-scale-pulse">
-          <Image
-            src="https://dash.versellpay.com/loading.svg"
-            alt="Loading"
-            width={100}
-            height={100}
-          />
-        </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="min-h-screen bg-[#101828] flex items-center justify-center">
-        <div className="text-red-400 text-xl">{error}</div>
       </div>
     );
   }
@@ -250,11 +146,12 @@ export default function Dashboard() {
             height={40}
           />
           <button
-            onClick={async () => {
+            onClick={() => {
               setIsRefreshing(true);
-              await fetchData();
-              await fetchBalance();
-              setIsRefreshing(false);
+              setTimeout(() => {
+                loadData();
+                setIsRefreshing(false);
+              }, 1000);
             }}
             disabled={isRefreshing}
             className={`bg-[#354153] hover:bg-[#4A5568] text-white px-4 py-2 rounded-lg transition-colors flex items-center gap-2 ${isRefreshing ? 'opacity-50 cursor-not-allowed' : ''}`}
@@ -282,16 +179,16 @@ export default function Dashboard() {
           </div>
 
           <div className="bg-[#1D2A39] rounded-lg p-6 border border-[#354153]">
-            <p className="text-gray-400 text-sm mb-2">Lucro de Hoje</p>
-            <p className="text-3xl font-bold text-blue-400">
-              {formatCurrency(todayProfit)}
+            <p className="text-gray-400 text-sm mb-2">Lucro Total</p>
+            <p className="text-3xl font-bold text-green-400">
+              {formatCurrency(totals.lucro)}
             </p>
           </div>
 
           <div className="bg-[#1D2A39] rounded-lg p-6 border border-[#354153]">
-            <p className="text-gray-400 text-sm mb-2">Saldo Disponível</p>
-            <p className="text-3xl font-bold text-green-400">
-              {formatCurrency(getTotalBalance())}
+            <p className="text-gray-400 text-sm mb-2">Período</p>
+            <p className="text-2xl font-bold text-blue-400">
+              7 Dias
             </p>
           </div>
         </div>
@@ -367,17 +264,18 @@ export default function Dashboard() {
 
         <div className="bg-[#1D2A39] rounded-lg p-6 border border-[#354153] overflow-x-auto">
           <h2 className="text-xl font-bold text-white mb-4">
-            Histórico de Transações
+            Histórico de Transações por Dia
           </h2>
           <table className="w-full">
             <thead>
               <tr className="border-b border-[#354153]">
                 <th className="text-left text-gray-400 py-3 px-4">Data</th>
+                <th className="text-left text-gray-400 py-3 px-4">Dia</th>
                 <th className="text-right text-gray-400 py-3 px-4">
                   Transações
                 </th>
                 <th className="text-right text-gray-400 py-3 px-4">
-                  Valor Total Transacionado
+                  Valor Total
                 </th>
                 <th className="text-right text-gray-400 py-3 px-4">Lucro</th>
               </tr>
@@ -389,21 +287,24 @@ export default function Dashboard() {
                   className="border-b border-[#354153] hover:bg-[#354153] transition-colors"
                 >
                   <td className="text-white py-3 px-4">
-                    {item.data_transacao}
+                    {item.date}
+                  </td>
+                  <td className="text-white py-3 px-4">
+                    {item.dayOfWeek}
                   </td>
                   <td className="text-white text-right py-3 px-4">
-                    {item.total_transacoes}
+                    {formatNumber(item.totalTransactions)}
                   </td>
                   <td className="text-white text-right py-3 px-4">
-                    {formatCurrency(parseFloat(item.valor_total.replace(/\./g, "").replace(",", ".")))}
+                    {formatCurrency(item.totalAmount)}
                   </td>
                   <td className="text-green-400 text-right py-3 px-4">
-                    {formatCurrency(parseFloat(item.lucro_total.replace(/\./g, "").replace(",", ".")))}
+                    {formatCurrency(item.profit)}
                   </td>
                 </tr>
               )) : (
                 <tr>
-                  <td colSpan={4} className="text-gray-400 text-center py-8">
+                  <td colSpan={5} className="text-gray-400 text-center py-8">
                     Nenhum dado disponível
                   </td>
                 </tr>
