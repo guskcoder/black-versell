@@ -318,7 +318,7 @@ export default function Dashboard() {
                 <Tooltip
                   contentStyle={{ backgroundColor: '#1D2A39', border: '1px solid #354153' }}
                   labelStyle={{ color: '#fff' }}
-                  formatter={(value: number, name: string, props: any) => {
+                  formatter={(value: number, name: string, props: { payload: { transacoes_real: number } }) => {
                     const transacoesCalculadas = Math.round(props.payload.transacoes_real / 3);
                     return [formatNumber(transacoesCalculadas), 'Transações'];
                   }}
@@ -355,7 +355,7 @@ export default function Dashboard() {
                 <Tooltip
                   contentStyle={{ backgroundColor: '#1D2A39', border: '1px solid #354153' }}
                   labelStyle={{ color: '#fff' }}
-                  formatter={(value: number, name: string, props: any) => {
+                  formatter={(value: number, name: string, props: { payload: { transacoes_real: number } }) => {
                     const lucroCalculado = (props.payload.transacoes_real / 3) * 0.65;
                     return [formatCurrency(lucroCalculado), 'Lucro'];
                   }}
