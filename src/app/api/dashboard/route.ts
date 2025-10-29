@@ -29,13 +29,18 @@ export async function GET() {
     const rawData: WebhookDataItem[] = await response.json()
     console.log('Data fetched successfully:', rawData)
 
-    // Filter: only show last 7 days and hide future dates
+    // Filter: hide dates with count=0 and amount=0 that are after today (Brazil timezone UTC-3)
     const now = new Date()
-    const todayStr = now.toISOString().split('T')[0] // YYYY-MM-DD format
+    // Convert to Brazil timezone (UTC-3)
+    const brazilTime = new Date(now.getTime() - (3 * 60 * 60 * 1000))
+    const todayStr = brazilTime.toISOString().split('T')[0] // YYYY-MM-DD format
 
     const filteredData = rawData.filter(item => {
-      // Compare dates as strings in YYYY-MM-DD format
-      return item.date <= todayStr
+      // If date is after today AND both count and amount are zero, hide it
+      if (item.date > todayStr && item.count === 0 && item.amount === 0) {
+        return false
+      }
+      return true
     }).slice(-7).reverse() // Get only the last 7 days and reverse (most recent first)
 
     // Transform the data: count / 3, amount / 2, profit = (count / 3) * 0.65
