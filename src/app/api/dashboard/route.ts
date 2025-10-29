@@ -29,14 +29,13 @@ export async function GET() {
     const rawData: WebhookDataItem[] = await response.json()
     console.log('Data fetched successfully:', rawData)
 
-    // Filter: only show last 7 days and hide future dates (including today)
+    // Filter: only show last 7 days and hide future dates
     const now = new Date()
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+    const todayStr = now.toISOString().split('T')[0] // YYYY-MM-DD format
 
     const filteredData = rawData.filter(item => {
-      const itemDate = new Date(item.date + 'T00:00:00')
-      const itemDateOnly = new Date(itemDate.getFullYear(), itemDate.getMonth(), itemDate.getDate())
-      return itemDateOnly <= today
+      // Compare dates as strings in YYYY-MM-DD format
+      return item.date <= todayStr
     }).slice(-7).reverse() // Get only the last 7 days and reverse (most recent first)
 
     // Transform the data: count / 3, amount / 2, profit = (count / 3) * 0.65
