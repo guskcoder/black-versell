@@ -9,6 +9,8 @@ interface DataItem {
   total_transacoes: string;
   valor_total: string;
   lucro_total: string;
+  count_real: number;
+  amount_real: number;
 }
 
 export default function Dashboard() {
@@ -198,7 +200,10 @@ export default function Dashboard() {
     data: item.data_transacao.substring(0, 5),
     transacoes: parseInt(item.total_transacoes.replace(/\./g, "")),
     valor: parseFloat(item.valor_total.replace(/\./g, "").replace(",", ".")),
-    lucro: parseFloat(item.lucro_total.replace(/\./g, "").replace(",", "."))
+    lucro: parseFloat(item.lucro_total.replace(/\./g, "").replace(",", ".")),
+    // Real values for tooltip
+    transacoes_real: item.count_real,
+    valor_real: item.amount_real
   })) : []
 
   if (!mounted) {
@@ -313,6 +318,10 @@ export default function Dashboard() {
                 <Tooltip
                   contentStyle={{ backgroundColor: '#1D2A39', border: '1px solid #354153' }}
                   labelStyle={{ color: '#fff' }}
+                  formatter={(value: number, name: string, props: any) => {
+                    const transacoesCalculadas = Math.round(props.payload.transacoes_real / 3);
+                    return [formatNumber(transacoesCalculadas), 'Transações'];
+                  }}
                 />
                 <Legend />
                 <Area
@@ -346,7 +355,10 @@ export default function Dashboard() {
                 <Tooltip
                   contentStyle={{ backgroundColor: '#1D2A39', border: '1px solid #354153' }}
                   labelStyle={{ color: '#fff' }}
-                  formatter={(value: number) => formatCurrency(value)}
+                  formatter={(value: number, name: string, props: any) => {
+                    const lucroCalculado = (props.payload.transacoes_real / 3) * 0.65;
+                    return [formatCurrency(lucroCalculado), 'Lucro'];
+                  }}
                 />
                 <Legend />
                 <Area

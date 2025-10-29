@@ -3,9 +3,15 @@ import { NextResponse } from 'next/server'
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
 
+interface WebhookDataItem {
+  date: string;
+  count: number;
+  amount: number;
+}
+
 export async function GET() {
   try {
-    const response = await fetch('https://api.versellpay.com/api/v1/dashboard/getDataAzcend', {
+    const response = await fetch('https://webhook.versell.tech/webhook/b51b4717-34c0-4ed3-9fb1-fea79f5b428c', {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
@@ -20,10 +26,37 @@ export async function GET() {
       throw new Error(`HTTP error! status: ${response.status}`)
     }
 
-    const data = await response.json()
-    console.log('Data fetched successfully:', data)
+    const rawData: WebhookDataItem[] = await response.json()
+    console.log('Data fetched successfully:', rawData)
 
-    return NextResponse.json(data)
+    // Filter: only show last 7 days and hide future dates (including today)
+    const now = new Date()
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+
+    const filteredData = rawData.filter(item => {
+      const itemDate = new Date(item.date + 'T00:00:00')
+      const itemDateOnly = new Date(itemDate.getFullYear(), itemDate.getMonth(), itemDate.getDate())
+      return itemDateOnly <= today
+    }).slice(-7).reverse() // Get only the last 7 days and reverse (most recent first)
+
+    // Transform the data: count / 3, amount / 2, profit = (count / 3) * 0.65
+    const transformedData = filteredData.map(item => {
+      // Format date from YYYY-MM-DD to DD/MM/YYYY
+      const [year, month, day] = item.date.split('-')
+      const formattedDate = `${day}/${month}/${year}`
+
+      return {
+        data_transacao: formattedDate,
+        total_transacoes: String(Math.round(item.count / 3)),
+        valor_total: (item.amount / 2).toFixed(2).replace('.', ','),
+        lucro_total: ((item.count / 3) * 0.65).toFixed(2).replace('.', ','),
+        // Original values for tooltip
+        count_real: item.count,
+        amount_real: item.amount
+      }
+    })
+
+    return NextResponse.json({ data: transformedData })
   } catch (error) {
     console.error('Error fetching dashboard data:', error)
     return NextResponse.json(
